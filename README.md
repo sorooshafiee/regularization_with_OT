@@ -13,4 +13,4 @@ conda install -c conda-forge matplotlib
 conda install -c gurobi gurobi
 ```
 ## Reference
-S. Shafieezadeh-Abadeh, L. Aolaritei‡, F. Dörfler, D. Kuhn. [CNew Perspectives on Regularization and Computation in Optimal Transport-Based Distributionally Robust Optimization](https://arxiv.org/pdf/xxxxxxx.pdf). arXiv preprint arXiv:xxx.xxx (2023).
+S. Shafieezadeh-Abadeh, L. Aolaritei‡, F. Dörfler, D. Kuhn. [New Perspectives on Regularization and Computation in Optimal Transport-Based Distributionally Robust Optimization](https://arxiv.org/pdf/2303.03900.pdf). arXiv preprint arXiv:2303.03900 (2023).
