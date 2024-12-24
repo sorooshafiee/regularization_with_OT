@@ -6,33 +6,36 @@ import os
 from matplotlib import rc
 from sklearn.covariance import LedoitWolf
 
-rc('font', family='serif')
-rc('text', usetex=True)
+plt.rcParams.update({
+    'font.size': 15,
+    'font.family' : 'serif',
+    'text.usetex': True,
+    'text.latex.preamble': r'\usepackage{amsfonts}',
+    'figure.figsize' : [8.5, 5]
+})
 
 
-def plot_with_shade(x, y, xlabel, ylabel):
+def my_plot(x, y, xlabel, ylabel, fname):
     y_mean = np.mean(y, axis=0)
-    y_max = np.max(y, axis=0)
-    y_min = np.min(y, axis=0)
     fig, ax = plt.subplots(1)
     ax.plot(x, y_mean, lw=2, color=[0, 0.4470, 0.7410])
     ax.set_xlabel(xlabel, fontsize=18)
-    ax.set_ylabel(ylabel, fontsize=18, labelpad=-20)
+    ax.set_ylabel(ylabel, fontsize=18, labelpad=10)
     ax.set_xlim(x.min(), x.max())
-    ax.set_yticks((-0.0358,-0.0345))
     ax.set_xscale('log')
-    ax.ticklabel_format(axis='y', style='sci', scilimits=(-2,-2))
-    fig.savefig('spot.pdf')  
+    ax.ticklabel_format(axis='y', style='sci', scilimits=(-1,-3))
+    fig.savefig(fname, format='pdf', dpi=1000)
     return fig, ax
 
+
 def Ind_retunrs(N, is_train):
-    fname = '10_Industry_Portfolios.CSV'
+    fname = './dataset/10_Industry_Portfolios.csv'
     df_10ind = pd.read_csv(fname, skiprows=11, nrows=1123, index_col=0)
     if is_train:
         data = np.log(100 + df_10ind.loc['197001':'202001'].values) - np.log(100)
         mu = np.mean(data, axis=0)
         #cov = np.cov(data.T)
-        cov = LedoitWolf().fit(data).covariance_
+        cov =  LedoitWolf().fit(data).covariance_
         R = np.exp(np.random.multivariate_normal(mu, cov, N))
     else:
         data = np.log(100 + df_10ind.loc['199001':'202001'].values) - np.log(100)
@@ -98,7 +101,7 @@ def projection_onto_simplex(theta):
     treshold = cssv[cond][-1] / float(rho)
     return np.maximum(theta - treshold, 0.0)
 
-def dro(xi, epsilon, x_0=None, eps_tr=1e-15, iter_max=1e6):
+def dro(xi, epsilon, x_0=None, eps_tr=1e-10, iter_max=1e5):
     n_features = xi.shape[1]
     x_current = x_0
     if x_0 is None:
@@ -130,14 +133,14 @@ def dro(xi, epsilon, x_0=None, eps_tr=1e-15, iter_max=1e6):
         x_prev = x_current.copy()
         x_current = x.copy()
         if iter > 0 and iter % 100 == 0:
-            imp = np.abs(np.diff(np.array(obj)[-100:]))
-            if np.mean(imp) < eps_tr:
+            imp = np.abs(np.diff(np.array(obj)[-20:]))
+            if np.mean(imp) < 1e-8:
                 break
     theta = x[0:n_features]
     lambdaa = x[-1]
     return theta, lambdaa, obj
 
-def saa(xi, eps_tr=1e-15, iter_max=1e6):
+def saa(xi, eps_tr=1e-10, iter_max=1e5):
     n_features = xi.shape[1]
     theta_current = np.ones(n_features) / n_features
     theta_prev = np.random.uniform(0, 1, n_features)
@@ -164,8 +167,8 @@ def saa(xi, eps_tr=1e-15, iter_max=1e6):
         theta_prev = theta_current.copy()
         theta_current = theta.copy()
         if iter > 0 and iter % 100 == 0:
-            imp = np.abs(np.diff(np.array(obj)[-100:]) / obj[-1])
-            if np.mean(imp) < eps_tr:
+            imp = np.abs(np.diff(np.array(obj)[-20:]) / obj[-1])
+            if np.mean(imp) < 1e-8:
                 break
     return theta, obj
 
@@ -174,7 +177,7 @@ def main():
     eps_tr = 1e-10
     epsilon_range = np.append(np.concatenate(
         [np.arange(1, 10) * 10.0 ** (i) for i in range(-4, -1)]), 1e-1)
-    is_load = False
+    is_load = True
     if is_load and \
         os.path.isfile('./save/profit_SAA.npy') and \
             os.path.isfile('./save/profit_DRO.npy') and \
@@ -185,7 +188,11 @@ def main():
         profit_DRO = np.load('./save/profit_DRO.npy')
         cost_SAA = np.load('./save/cost_SAA.npy')
         cost_DRO = np.load('./save/cost_DRO.npy')
+        sharpe_SAA = np.load('./save/sharpe_SAA.npy')
+        sharpe_DRO = np.load('./save/sharpe_DRO.npy')
     else:
+        sharpe_SAA = []
+        sharpe_DRO = []
         profit_SAA = []
         profit_DRO = []
         cost_SAA = []
@@ -199,41 +206,49 @@ def main():
 
             theta_1, obj_1 = saa(xi_train, eps_tr)
             cost_SAA.append(-np.mean(np.log(xi_test @ theta_1)))
-            profit_SAA.append(np.mean(xi_test @ theta_1))
+            profit_SAA.append(np.exp(np.mean(np.log(xi_test @ theta_1))))
+            sharpe_SAA.append((np.mean(xi_test @ theta_1) - 1) / np.std(xi_test @ theta_1))
             cost_tmp = []
             profit_tmp = []
+            sharpe_tmp = []
             x_0 = None
             for eps in epsilon_range:
                 theta_2, lambdaa_2, obj_2 = dro(xi_train, eps, x_0, eps_tr)
                 x_0 = np.append(theta_2, lambdaa_2)
                 cost_tmp.append(-np.mean(np.log(xi_test @ theta_2)))
-                profit_tmp.append(np.mean(xi_test @ theta_2))
+                profit_tmp.append(np.exp(np.mean(np.log(xi_test @ theta_2))))
+                sharpe_tmp.append((np.mean(xi_test @ theta_2) - 1) / np.std(xi_test @ theta_2))
             cost_DRO.append(cost_tmp)
             profit_DRO.append(profit_tmp)
+            sharpe_DRO.append(sharpe_tmp)
+        sharpe_SAA = np.array(sharpe_SAA)
+        sharpe_DRO = np.array(sharpe_DRO)
         profit_SAA = np.array(profit_SAA)
         profit_DRO = np.array(profit_DRO)
         cost_SAA = np.array(cost_SAA)
         cost_DRO = np.array(cost_DRO)
         if not os.path.isdir('./save/'):
             os.mkdir('./save/')
+        np.save('./save/sharpe_SAA', sharpe_SAA)
+        np.save('./save/sharpe_DRO', sharpe_DRO)
         np.save('./save/profit_SAA', profit_SAA)
         np.save('./save/profit_DRO', profit_DRO)
         np.save('./save/cost_SAA', cost_SAA)
         np.save('./save/cost_DRO', cost_DRO)
 
-    bins = 30
-    plt.ticklabel_format(axis='x', style='sci', scilimits=(-2,-2))
-    plt.hist(cost_SAA, bins, histtype ='bar', alpha=0.4, edgecolor='black', label=r'SAA $(\varepsilon = 0)$', color='red')
-    plt.hist(cost_DRO[:,19], bins, histtype ='bar', alpha=0.4, edgecolor='black', label=r'DRO $(\varepsilon = 10^{-2})$', color='blue')
-    plt.legend(loc='upper right')
-    plt.savefig('hist.pdf') 
-
     epsilon_range = np.append(np.concatenate(
         [np.arange(1, 10) * 10.0 ** (i) for i in range(-4, -1)]), 1e-1)
-    plot_with_shade(epsilon_range, cost_DRO, 
+    my_plot(epsilon_range, cost_DRO, 
                     r'$\varepsilon$', 
-                    r'$ \mathbb E_{Z \sim \mathbb P}[-\log(\theta^\top Z )]$')
+                    r'$ \mathbb E_{Z \sim \mathbb P}[-\log(\theta^\top Z )]$', 'output.pdf')
 
+    bins = 30
+    plt.figure()
+    plt.hist(cost_SAA, bins, histtype ='bar', alpha=0.4, edgecolor='black', label=r'SAA $(\varepsilon = 0)$', color='red')
+    plt.hist(cost_DRO[:,19], bins, histtype ='bar', alpha=0.4, edgecolor='black', label=r'DRO $(\varepsilon = 10^{-2})$', color='blue')
+    plt.ticklabel_format(axis='x', style='sci', scilimits=(-3,-3))
+    plt.legend(loc='upper right')
+    plt.savefig('hist.pdf', format='pdf', dpi=1000) 
 
 if __name__ == "__main__":
     main()
