@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.sparse import vstack
 from sklearn.datasets import load_svmlight_file
-from sklearn.datasets import make_blobs
 import gurobipy as grb
 import matplotlib
 import matplotlib.pyplot as plt
