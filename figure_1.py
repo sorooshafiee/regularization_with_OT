@@ -392,7 +392,6 @@ def main():
     y[y == 0] = -1
     X[5] = X[5] + np.array([0.3, 0.3])  # For better visualization
 
-    # Solve the estimation and least-favorable problem
     theta = estimation_problem(X, y, epsilon, norm)
     dual_norm = norm
     if norm == 1:
