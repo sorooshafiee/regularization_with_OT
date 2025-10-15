@@ -3,7 +3,7 @@
 This folder contains the source code for the implementation and all the experiments in the paper.
 
 ## Dependencies
-To use the code, use python3.9 and install Gurobi 9.5 and the following packages in python as follows
+To use the code, use python 3.12 and install Gurobi 9.5 and the following packages in python as follows
 
 ```
 conda install -c conda-forge numpy
