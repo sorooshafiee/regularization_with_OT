@@ -285,6 +285,7 @@ def main():
         label=r"SAA $(\varepsilon = 0)$",
         color="#EE9595",
     )
+
     plt.hist(
         cost_DRO[:, 19],
         bins,
@@ -294,6 +295,7 @@ def main():
         label=r"DRO $(\varepsilon = 10^{-2})$",
         color="#082678",
     )
+
     plt.ticklabel_format(axis="x", style="sci", scilimits=(-3, -3))
     plt.legend(loc="upper right")
     plt.savefig("hist.pdf", format="pdf", dpi=300, bbox_inches="tight")
